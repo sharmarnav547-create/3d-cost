@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3D Print Cost Calculator</title>
+  <style>
+    body {
+      background: linear-gradient(120deg, #c9fffa 0%, #ffdde1 100%);
+      font-family: Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .calculator-card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 6px 38px 4px rgba(41,184,205,0.10);
+      padding: 2.2rem 1.3rem 1.8rem 1.3rem;
+      margin: 2.5rem 0 1.5rem 0;
+      max-width: 93vw;
+      width: 400px;
+    }
+    .header {
+      text-align: center;
+      font-weight: 700;
+      font-size: 2rem;
+      margin-bottom: 1.4rem;
+      color: #25a18e;
+      letter-spacing: 0.5px;
+      text-shadow: 0px 2px 4px #00000009;
+    }
+    label {
+      display: block;
+      margin-top: 1.18rem;
+      margin-bottom: 0.27rem;
+      font-size: 1.08rem;
+      color: #382450;
+      font-weight: 500;
+    }
+    input {
+      width: 100%;
+      font-size: 1.14rem;
+      padding: 0.7rem 0.92rem;
+      border: 1.3px solid #b5e4e2;
+      border-radius: 10px;
+      background: #f7fafa;
+      transition: border-color 0.2s;
+      margin-bottom: 0.08rem;
+      outline: none;
+    }
+    input:focus {
+      border-color: #25a18e;
+    }
+    .cost-section {
+      margin: 1.6rem 0;
+      padding: 1.1rem 0.6rem 0.7rem 0.9rem;
+      background: #f7fafb;
+      border-radius: 13px;
+      box-shadow: 0 2px 14px 1px #dbffff2c;
+      font-size: 1.01rem;
+      color: #344;
+    }
+    .cost-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.38rem;
+    }
+    .cost-icon { margin-right: 0.58rem; font-size: 1.18em;}
+    .cost-label {flex: 1;}
+    .cost-value {font-weight: 600; min-width: 70px; text-align: right;}
+    .plus {color: #25a18e;}
+    .totalbox {
+      font-size: 1.23rem;
+      text-align: center;
+      background: linear-gradient(90deg, #d0f9efc9 0%, #ffe9fbbe 100%);
+      color: #190a29;
+      border-radius: 17px;
+      font-weight: 700;
+      margin-top: 1.51rem;
+      padding: 1.36rem 1.1rem 1.02rem 1.1rem;
+      box-shadow: 0 2px 10px 0 #a3ffe860;
+      border: 2.5px solid #91ffe9;
+      letter-spacing: 1.5px;
+    }
+    button {
+      width: 100%;
+      margin-top: 1.1rem;
+      padding: 0.9rem 0;
+      background: linear-gradient(90deg, #25a18e 40%, #1d3557 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.18rem;
+      font-weight: bold;
+      box-shadow: 0 3px 10px #23e7ce14;
+      cursor: pointer;
+      transition: background 0.18s;
+      letter-spacing: 1px;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #27c5af 0%, #396fc2 100%);
+    }
+    .note {
+      margin: 1.21rem 0 0 0;
+      font-size: 1rem;
+      text-align: center;
+      color: #7161b7;
+      letter-spacing: 0.1px;
+      opacity: 0.9;
+    }
+    @media (max-width:500px) {
+      .calculator-card {padding: 1.2rem 0.7rem;}
+      .header { font-size: 1.33rem; }
+      label, .note, .cost-section, .totalbox { font-size: 0.99rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="calculator-card">
+    <div class="header">3D Print Pricing</div>
+    <label for="weight">Filament (grams):</label>
+    <input type="number" id="weight" placeholder="e.g. 80"/>
+
+    <label for="time">Print Time (minutes):</label>
+    <input type="number" id="time" placeholder="e.g. 120"/>
+
+    <label for="profit">Profit margin (%):</label>
+    <input type="number" id="profit" value="20" min="0" max="99"/>
+
+    <label for="addcost">Additional Cost (₹, optional):</label>
+    <input type="number" id="addcost" placeholder="e.g. 50"/>
+
+    <button onclick="calculateCost()">Calculate Total</button>
+  
+    <div id="costs" class="cost-section" style="display:none"></div>
+    <div id="total" class="totalbox" style="display:none"></div>
+  </div>
+  <div class="note">Packing & handling charges are extra and not included. <br>Cost includes a 15% failed print buffer.</div>
+  <script>
+    function calculateCost() {
+      const w = parseFloat(document.getElementById('weight').value);
+      const tMin = parseFloat(document.getElementById('time').value);
+      let profit = parseFloat(document.getElementById('profit').value);
+      if(isNaN(profit) || profit<0 || profit>=100){profit = 20;}
+      document.getElementById('profit').value = profit; // visually update
+
+      const addcost = parseFloat(document.getElementById('addcost').value) || 0;
+
+      if(isNaN(w) || isNaN(tMin)) {
+        document.getElementById('costs').style.display='none';
+        document.getElementById('total').style.display='none';
+        alert("Please enter filament weight and print time");
+        return;
+      }
+
+      // === Cost Constants ===
+      const filamentPerG = 1.0;
+      const printerCost = 40000;
+      const amortHours = 2000;
+      const maintenanceYear = printerCost * 0.15;
+      const maintenancePerHour = maintenanceYear / 700;
+      const powerW = 57;
+      const elecUnit = 4.0;
+      const failMargin = 0.15; // 15% failed print buffer
+
+      // === CALCULATIONS ===
+      const tHr = tMin/60;
+      const filamentCost = w*filamentPerG;
+      const elecCost = ((powerW/1000)*tHr)*elecUnit;
+      const printerRec = (printerCost/amortHours)*tHr;
+      const maint = maintenancePerHour*tHr;
+      const base = (filamentCost+elecCost+printerRec+maint+addcost) * (1+failMargin);
+      const total = base*(1+profit/100);
+
+      // === Pretty breakdown ===
+      document.getElementById('costs').innerHTML =
+        `<div class="cost-row"><span class="cost-icon">🧵</span><span class="cost-label">Filament</span><span class="cost-value plus">₹${filamentCost.toFixed(2)}</span></div>`+
+        `<div class="cost-row"><span class="cost-icon">🔋</span><span class="cost-label">Electricity</span><span class="cost-value plus">₹${elecCost.toFixed(2)}</span></div>`+
+        `<div class="cost-row"><span class="cost-icon">🛠️</span><span class="cost-label">Maintenance</span><span class="cost-value plus">₹${maint.toFixed(2)}</span></div>`+
+        `<div class="cost-row"><span class="cost-icon">🤖</span><span class="cost-label">Printer Recovery</span><span class="cost-value plus">₹${printerRec.toFixed(2)}</span></div>`+
+        (addcost>0?`<div class="cost-row"><span class="cost-icon">✨</span><span class="cost-label">Additional</span><span class="cost-value plus">₹${addcost.toFixed(2)}</span></div>`:"") +
+        `<hr style="margin: 7px 0 8px 0; border:0.6px solid #ebf9f1">`+
+        `<div class="cost-row"><span class="cost-label" style="font-weight:600">Subtotal (inc. 15% failed print buffer)</span><span class="cost-value" style="color:#25a18e;font-weight:700">₹${base.toFixed(2)}</span></div>`;
+      document.getElementById('costs').style.display='block';
+
+      document.getElementById('total').innerHTML =
+        `Total Cost (with profit)<br><span style="font-size:1.63em;color:#248c72;">₹${total.toFixed(2)}</span>`;
+      document.getElementById('total').style.display='block';
+    }
+  </script>
+</body>
+</html>
